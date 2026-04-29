@@ -13,7 +13,7 @@ func move()->void:
 	var direction:float = Input.get_axis("key_left","key_right")
 	player.rvelocity.x += direction * 5.0
 	
-	if abs(player.velocity.x) > max_x_speed:
+	if abs(player.rvelocity.x) > max_x_speed:
 		player.rvelocity.x = sign(player.rvelocity.x) * max_x_speed
 
 func refresh_speed()->void:
