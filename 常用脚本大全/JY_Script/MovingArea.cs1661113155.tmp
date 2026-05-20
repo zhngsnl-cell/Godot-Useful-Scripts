@@ -1,0 +1,80 @@
+using Godot;
+
+/// <summary>
+/// 移动的范围检测器（2D）。
+/// 支持两种移动方式：
+///   1. UseTween = true  ：从当前位置在 TravelTime 秒内匀速移动到 EndPosition（音游节拍同步推荐）。
+///   2. UseTween = false ：按 Direction * Speed 每帧推进（匀速直线）。
+/// 范围内目标通过 Area2D 的信号 + 主动查询双通道获取。
+/// </summary>
+public partial class MovingArea : Area2D
+{
+	// ===== 移动参数 =====
+	[Export] public bool UseTween = true;
+	[Export] public Vector2 EndPosition = new Vector2(500, 300);
+	[Export] public float TravelTime = 1.0f;
+
+	[Export] public float Speed = 200f;
+	[Export] public Vector2 Direction = Vector2.Right;
+
+	// ===== 判定结果 =====
+	private bool _success = false;
+
+	public override void _Ready()
+	{
+		// 信号连接（C# 使用事件语法）
+		MouseEntered += OnMouseEntered;
+		AreaEntered += OnAreaEntered;
+		BodyEntered += OnBodyEntered;
+
+		if (UseTween)
+		{
+			var tween = CreateTween();
+			tween.TweenProperty(this, "global_position", EndPosition, TravelTime);
+			tween.TweenCallback(Callable.From(OnFinished));
+		}
+	}
+
+	public override void _PhysicsProcess(double delta)
+	{
+		// 非 Tween 模式：自行推进
+		if (!UseTween)
+		{
+			GlobalPosition += Direction.Normalized() * Speed * (float)delta;
+		}
+
+		// 主动查询当前范围内的所有目标（与信号二选一或并用）
+		// 注意：Area2D 的重叠列表在物理帧末尾才更新，所以查询必须放在 _PhysicsProcess
+		foreach (Node2D body in GetOverlappingBodies())
+		{
+			// GD.Print($"范围内 body: {body.Name}");
+		}
+	}
+
+	// 鼠标进入检测区域 —— 音游点击判定
+	private void OnMouseEntered()
+	{
+		if (_success) return;
+		_success = true;
+		GD.Print("success");
+	}
+
+	// 另一个 Area2D 进入
+	private void OnAreaEntered(Area2D area)
+	{
+		GD.Print($"Area 进入: {area.Name}");
+	}
+
+	// PhysicsBody2D（如 CharacterBody2D）进入
+	private void OnBodyEntered(Node2D body)
+	{
+		GD.Print($"Body 进入: {body.Name}");
+	}
+
+	// Tween 结束：未命中判 miss，随后释放
+	private void OnFinished()
+	{
+		if (!_success) GD.Print("miss");
+		QueueFree();
+	}
+}
